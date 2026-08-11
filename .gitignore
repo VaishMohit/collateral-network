@@ -1,0 +1,13 @@
+# Compiler / build artifacts
+out/
+cache/
+broadcast/
+lib/
+node_modules/
+
+# Local deployment artifacts (kept by default; anvil.json is committed)
+deployments/*.json.tmp
+
+# Node
+*.log
+.DS_Store
