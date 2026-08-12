@@ -1,0 +1,87 @@
+{
+  "accessManager": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+  "admin": {
+    "address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "label": "ADMIN",
+    "privateKey": "77814517325470205911140941194401928579557062014761831930645393041380819009408",
+    "role": "ADMIN"
+  },
+  "assetRegistry": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+  "assets": {
+    "corpBondAssetId": "0x434f52502d424f4e442d30303100000000000000000000000000000000000000",
+    "note": "V1 asset universe: exactly two securities",
+    "tBondAssetId": "0x542d424f4e442d30303100000000000000000000000000000000000000000000"
+  },
+  "attestationRegistry": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
+  "auditRegistry": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+  "bankA": {
+    "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+    "label": "BANKA",
+    "privateKey": "40606737760334725431406512677033654118342507952694270066784247067953537247501",
+    "role": "COLLATERAL_PROVIDER"
+  },
+  "bankB": {
+    "address": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+    "label": "BANKB",
+    "privateKey": "42468054105998644681036035997014131563610289007175279352442773583210734106202",
+    "role": "COLLATERAL_RECEIVER"
+  },
+  "cashToken": "0x0165878A594ca255338adfa4d48449f69242Eb8F",
+  "chainId": 31337,
+  "collateralAgent": {
+    "address": "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc",
+    "label": "COLLATERALAGENT",
+    "privateKey": "62974329224788767027781683098475633401756052717538436960952236504350829969338",
+    "role": "COLLATERAL_AGENT"
+  },
+  "collateralManager": "0x9A9f2CCfdE556A7E9Ff0848998Aa4a0CFD8863AE",
+  "complianceProvider": {
+    "address": "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f",
+    "label": "COMPLIANCEPROVIDER",
+    "privateKey": "99441853050827239803755179884383039751067843098001156210058623659522287631255",
+    "role": "COMPLIANCE_PROVIDER"
+  },
+  "complianceRegistry": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
+  "corpBondToken": "0x610178dA211FEF7D417bC0e6FeD39F05609AD788",
+  "custodianA": {
+    "address": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+    "label": "CUSTODIANA",
+    "privateKey": "56322012292958744279386700371626744397416111214454389791953442801248333989798",
+    "role": "CUSTODIAN"
+  },
+  "custodyRegistry": "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
+  "eligibilityPolicy": "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1",
+  "marginManager": "0x3Aa5ebB10DC797CAC828524e59A333d0A371443c",
+  "mockCsd": {
+    "address": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
+    "label": "MOCKCSD",
+    "privateKey": "32512594315523171181992869011023752689221391970497757937580586711945735082602",
+    "role": "AUTHORITATIVE_ASSET_REGISTRY"
+  },
+  "note": "LOCAL ANVIL TESTNET ONLY - deterministic development keys. Never use in production.",
+  "pledgeManager": "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+  "repoManager": "0x59b670e9fA9D0A427751Af201D676719a970857b",
+  "roles": {
+    "BANK": "pledge / substitute / release own collateral, repo",
+    "COLLATERAL_AGENT": "verifies/approves collateral workflows",
+    "CSD": "can issue/revoke asset attestations",
+    "CUSTODIAN": "can submit signed custody attestations",
+    "SETTLEMENT_AGENT": "executes settlement coordinator",
+    "VALUATION_PROVIDER": "submits signed market prices"
+  },
+  "settlementAgent": {
+    "address": "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955",
+    "label": "SETTLEMENTAGENT",
+    "privateKey": "34255578182196337387402795165358488979336877446916507045826899239861607154518",
+    "role": "SETTLEMENT_AGENT"
+  },
+  "settlementCoordinator": "0xc6e7DF5E7b4f2A278906862b61205850344D4e7d",
+  "tBondToken": "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
+  "valuationOracle": "0x0B306BF915C4d645ff596e518fAf3F9669b97016",
+  "valuationProvider": {
+    "address": "0x976EA74026E726554dB657fA54763abd0C3a0aa9",
+    "label": "VALUATIONPROVIDER",
+    "privateKey": "66424759582529864496071593131395627548424534888947377228496965612768440964686",
+    "role": "VALUATION_PROVIDER"
+  }
+}
