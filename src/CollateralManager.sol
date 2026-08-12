@@ -434,6 +434,8 @@ contract CollateralManager {
         pendingSubstitution[oldPositionId] = replacementId;
         substitutionSource[replacementId] = oldPositionId;
 
+        if (obligationId != bytes32(0)) positionsByObligation[obligationId].push(replacementId);
+
         audit.log(
             AuditRegistry.AuditEventType.COLLATERAL_SUBSTITUTION_REQUESTED,
             provider,
@@ -457,7 +459,7 @@ contract CollateralManager {
         // Replacement is valued with current (fresh) prices; reverts if stale.
         (uint256 marketValue, uint256 collateralValue, uint256 haircutBps) =
             eligibility.assessCollateral(r.assetId, r.provider, r.quantity);
-        (uint256 oldValue, ) = eligibility.getCollateralValue(old.assetId, old.quantity);
+        (, uint256 oldValue) = eligibility.getCollateralValue(old.assetId, old.quantity);
 
         // Atomicity rule: replacement must cover the CURRENT value of the old collateral.
         if (collateralValue < oldValue) revert InvalidValueRelation();
@@ -560,7 +562,13 @@ contract CollateralManager {
     function _release(bytes32 positionId) internal {
         CollateralPosition storage p = positions[positionId];
 
-        _unlock(positionId);
+        // A pledged position's quantity lives in `pledged` (moved there at
+        // finalizePledge), so release moves it out of `pledged` directly rather
+        // than via _unlock (which only applies to RESERVED positions).
+        address token = assetRegistry.getToken(p.assetId);
+        require(token != address(0), "Collateral: no token");
+        ITokenizedSecurity(token).forceTransfer(address(this), p.provider, p.quantity);
+        custodyRegistry.applyEncumbrance(p.assetId, -int256(p.quantity));
 
         CollateralLedger storage l = ledgerByAssetIdProvider(p.assetId, p.provider);
         l.pledged -= p.quantity;
@@ -614,7 +622,7 @@ contract CollateralManager {
         for (uint256 i = 0; i < ids.length; i++) {
             CollateralPosition storage p = positions[ids[i]];
             if (!_isEncumbered(p.status)) continue;
-            (uint256 live, ) = eligibility.getCollateralValue(p.assetId, p.quantity);
+            (, uint256 live) = eligibility.getCollateralValue(p.assetId, p.quantity);
             total += live;
         }
         return total;

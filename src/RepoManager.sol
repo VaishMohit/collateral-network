@@ -177,8 +177,16 @@ contract RepoManager {
         repaid = _amountOwed(r);
         require(cash.transferFrom(r.borrower, r.lender, repaid), "Repo: repayment failed");
 
-        // Release the collateral back to the borrower.
-        settlement.releaseCollateral(r.collateralPositionId);
+        // Release the collateral back to the borrower. Substitution may have
+        // replaced the original position, so release every currently-pledged
+        // position linked to this repo obligation.
+        bytes32[] memory ids = collateral.getPositionsByObligation(repoId);
+        for (uint256 i = 0; i < ids.length; i++) {
+            ICollateralManager.CollateralPosition memory p = collateral.getPosition(ids[i]);
+            if (p.status == ICollateralManager.CollateralStatus.PLEDGED) {
+                settlement.releaseCollateral(ids[i]);
+            }
+        }
 
         r.status = RepoStatus.CLOSED;
 
@@ -211,7 +219,13 @@ contract RepoManager {
         if (block.timestamp < r.maturity) revert TooEarly();
 
         r.status = RepoStatus.DEFAULTED;
-        settlement.markCollateralDefault(r.collateralPositionId);
+        bytes32[] memory ids = collateral.getPositionsByObligation(repoId);
+        for (uint256 i = 0; i < ids.length; i++) {
+            ICollateralManager.CollateralPosition memory p = collateral.getPosition(ids[i]);
+            if (p.status == ICollateralManager.CollateralStatus.PLEDGED) {
+                settlement.markCollateralDefault(ids[i]);
+            }
+        }
 
         audit.log(
             AuditRegistry.AuditEventType.REPO_DEFAULTED,
