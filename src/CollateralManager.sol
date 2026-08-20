@@ -167,7 +167,10 @@ contract CollateralManager {
 
     function _newPositionId() internal returns (bytes32) {
         positionCounter++;
-        return keccak256(abi.encode(block.timestamp, positionCounter, msg.sender));
+        // Deterministic (no block.timestamp): scripts that capture the id during
+        // simulation produce the same id as the broadcast transaction, so
+        // multi-step live workflows do not go stale across broadcasts.
+        return keccak256(abi.encode(msg.sender, positionCounter));
     }
 
     /* ------------------------------------------------------------------ */
@@ -526,6 +529,7 @@ contract CollateralManager {
         CollateralPosition storage r = positions[replacementId];
         if (r.status == CollateralStatus.RESERVED) {
             _unlock(replacementId);
+            r.status = CollateralStatus.AVAILABLE;
         }
         delete pendingSubstitution[oldPositionId];
         delete substitutionSource[replacementId];

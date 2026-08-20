@@ -17,4 +17,4 @@ depth = 128
 fail_on_revert = true
 
 [lint]
-exclude_lints = ["unsafe-typecast", "unwrapped-modifier-logic", "named-args-struct-conversion"]
+exclude_lints = ["unsafe-typecast", "unwrapped-modifier-logic", "named-struct-fields"]

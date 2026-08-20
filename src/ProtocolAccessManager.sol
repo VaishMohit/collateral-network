@@ -81,10 +81,15 @@ contract ProtocolAccessManager {
 
     function setAdmin(address newAdmin) external onlyAdmin {
         require(newAdmin != address(0), "AccessManager: zero admin");
-        emit AdminChanged(admin, newAdmin);
+        address previousAdmin = admin;
+        emit AdminChanged(previousAdmin, newAdmin);
         admin = newAdmin;
         hasRole[ADMIN][newAdmin] = true;
         emit RoleGranted(ADMIN, newAdmin, msg.sender);
+        if (previousAdmin != newAdmin) {
+            hasRole[ADMIN][previousAdmin] = false;
+            emit RoleRevoked(ADMIN, previousAdmin, msg.sender);
+        }
     }
 
     /* ------------------------------------------------------------------ */

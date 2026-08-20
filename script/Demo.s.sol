@@ -75,6 +75,23 @@ contract Demo is Script {
     function run() external {
         _load();
 
+        // Phase control for live (broadcast) runs, where forge sends every
+        // captured tx after the script finishes so mid-script time jumps would
+        // corrupt earlier broadcasts:
+        //   DEMO_PHASE=1  steps 1-15b  (attestation .. margin call satisfied), real time
+        //   DEMO_PHASE=2  steps 19-21  (clock jump, repay, release) + final checks
+        //   DEMO_PHASE=all (default)   complete lifecycle in one run (forge test)
+        string memory phase = vm.envOr("DEMO_PHASE", string("all"));
+        bool doPhase1 = keccak256(bytes(phase)) != keccak256(bytes("2"));
+        bool doPhase2 = keccak256(bytes(phase)) != keccak256(bytes("1"));
+
+        bytes32 repoId;
+        bytes32 replacementId;
+
+        // Repo id is derived deterministically on-chain (counter + parties), so
+        // it can be recomputed here in either phase.
+        repoId = keccak256(abi.encode("REPO", uint256(1), bankA, bankB));
+
         console2.log("==========================================================");
         console2.log("Institutional Collateral Network - end-to-end demo");
         console2.log("==========================================================");
@@ -82,6 +99,8 @@ contract Demo is Script {
         // ------------------- STEP 1: Mock CSD books the asset ----------------
         // (Off-chain: Mock CSD ledger now shows 10,000 T-BOND-001 owned by
         //  Bank A, held by Custodian A, encumbered = 0. No on-chain action yet.)
+
+        if (doPhase1) {
 
         // ------------------- STEP 2+3: signed custody attestation ------------
         bytes32 attestationId = keccak256("CUSTODY_T_BOND_001_V1");
@@ -119,7 +138,6 @@ contract Demo is Script {
         console2.log(string.concat("[5] T-BOND price = $", _toUsd(px)));
 
         // ------------------- STEP 6: Bank B sets requirement -----------------
-        bytes32 repoId = keccak256(abi.encode("REPO", uint256(1), bankA, bankB));
         vm.startBroadcast(C.PK_BANK_B);
         marginManager.setRequirement(repoId, C.REQUIREMENT);
         vm.stopBroadcast();
@@ -211,7 +229,7 @@ contract Demo is Script {
         _submitCustodyAttestation(_corpAttestation(), C.PK_CUSTODIAN_A);
 
         vm.startBroadcast(C.PK_BANK_A);
-        bytes32 replacementId = pledgeManager.requestSubstitution(positionId, C.CORP_BOND, C.CORP_BOND_QUANTITY);
+        replacementId = pledgeManager.requestSubstitution(positionId, C.CORP_BOND, C.CORP_BOND_QUANTITY);
         vm.stopBroadcast();
 
         vm.startBroadcast(C.PK_COLLATERAL_AGENT);
@@ -253,21 +271,31 @@ contract Demo is Script {
         _check(satisfied, "margin call satisfied");
         console2.log(string.concat("[15b] Margin call satisfied - new collateral = $", _toUsd(mc.requiredValue)));
 
+        console2.log("PHASE 1 COMPLETE");
+        }
+
         // ------------------- STEP 19-21: repo matures + release --------------
-        // Approve the repayment first (mined at real time), then fast-forward
-        // so the repayAndClose tx itself lands past maturity.
+        // Phase 2 runs alone: broadcast the approve at real time, then advance
+        // the node clock persistently (anvil_setTime) so the repayAndClose
+        // broadcast lands past maturity.
+        if (doPhase2) {
         vm.startBroadcast(C.PK_BANK_A);
         cash.approve(address(repoManager), C.REPO_CASH + 1_000_000);
         vm.stopBroadcast();
 
-        _skipAhead(block.timestamp + C.REPO_TENOR + 1);
+        RepoManager.Repo memory repo = repoManager.getRepo(repoId);
+        _skipAhead(repo.maturity + 1);
 
         vm.startBroadcast(C.PK_BANK_A);
         uint256 repaid = repoManager.repayAndClose(repoId);
         vm.stopBroadcast();
 
         _check(repoManager.getRepo(repoId).status == RepoManager.RepoStatus.CLOSED, "repo CLOSED");
-        _check(collateralManager.getPosition(replacementId).status == CollateralManager.CollateralStatus.RELEASED, "collateral released");
+        bytes32[] memory ids = collateralManager.getPositionsByObligation(repoId);
+        for (uint256 i = 0; i < ids.length; i++) {
+            CollateralManager.CollateralPosition memory pos = collateralManager.getPosition(ids[i]);
+            _check(pos.status == CollateralManager.CollateralStatus.RELEASED, "collateral released");
+        }
         _check(corpBondToken.balanceOf(bankA) == C.CORP_BOND_QUANTITY, "corp tokens returned to Bank A");
         console2.log(string.concat("[19-21] Repo matured: Bank A repaid $", _toUsd(repaid), " (principal + interest)"));
         console2.log(string.concat("        Collateral released - ", vm.toString(corpBondToken.balanceOf(bankA)), " corp bonds back to Bank A"));
@@ -280,6 +308,7 @@ contract Demo is Script {
         _check(custodyRegistry.availableQuantity(C.T_BOND) == C.T_BOND_QUANTITY, "custody fully unencumbered");
         console2.log("Reconciliation snapshot: CSD state == on-chain state (MATCH)");
         console2.log("DEMO COMPLETE");
+        }
     }
 
     /* ------------------------------------------------------------------ */
@@ -380,6 +409,10 @@ contract Demo is Script {
     function _skipAhead(uint256 target) internal {
         vm.warp(target);
         if (vm.envOr("ANVIL_FAST_TIME", false)) {
+            // One-shot: applies to the next mined block. Safe here because in
+            // phase 2 the first broadcast after this call (cash.approve) is not
+            // time-sensitive; repayAndClose mines the block after it, already
+            // past maturity.
             vm.rpc("anvil_setNextBlockTimestamp", string.concat('[', vm.toString(target), ']'));
         }
     }
