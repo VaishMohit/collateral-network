@@ -100,7 +100,7 @@ contract CollateralManagerTest is TestBase {
         assertEq(uint256(p.status), uint256(CollateralManager.CollateralStatus.RECOVERY));
         assertEq(tBondToken.balanceOf(bankB), C.T_BOND_QUANTITY);
         assertEq(tBondToken.balanceOf(address(collateralManager)), 0);
-        assertEq(custodyRegistry.getCustodyState(C.T_BOND).encumberedQuantity, 0);
+        assertEq(custodyRegistry.getCustodyState(C.T_BOND, bankA).encumberedQuantity, 0);
     }
 
     function test_enforceRequiresDefaulted() public {
@@ -118,7 +118,7 @@ contract CollateralManagerTest is TestBase {
         collateralManager.release(positionId);
         assertEq(uint256(collateralManager.getPosition(positionId).status), uint256(CollateralManager.CollateralStatus.RELEASED));
         assertEq(tBondToken.balanceOf(bankA), C.T_BOND_QUANTITY);
-        assertEq(custodyRegistry.getCustodyState(C.T_BOND).encumberedQuantity, 0);
+        assertEq(custodyRegistry.getCustodyState(C.T_BOND, bankA).encumberedQuantity, 0);
     }
 
     function test_deterministicPositionIds() public {

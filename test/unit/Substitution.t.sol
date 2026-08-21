@@ -45,8 +45,8 @@ contract SubstitutionTest is TestBase {
         assertEq(tBondToken.balanceOf(bankA), C.T_BOND_QUANTITY);
         assertEq(corpBondToken.balanceOf(bankA), 0);
         assertEq(corpBondToken.balanceOf(address(collateralManager)), 11_000);
-        assertEq(custodyRegistry.getCustodyState(C.T_BOND).encumberedQuantity, 0);
-        assertEq(custodyRegistry.getCustodyState(C.CORP_BOND).encumberedQuantity, 11_000);
+        assertEq(custodyRegistry.getCustodyState(C.T_BOND, bankA).encumberedQuantity, 0);
+        assertEq(custodyRegistry.getCustodyState(C.CORP_BOND, bankA).encumberedQuantity, 11_000);
     }
 
     function test_substitutionOnlyByProviderOrAgent() public {
@@ -99,6 +99,6 @@ contract SubstitutionTest is TestBase {
         assertEq(uint256(collateralManager.getPosition(replacementId).status), uint256(CollateralManager.CollateralStatus.AVAILABLE));
         assertEq(corpBondToken.balanceOf(bankA), 11_000);
         assertEq(corpBondToken.balanceOf(address(collateralManager)), 0);
-        assertEq(custodyRegistry.getCustodyState(C.CORP_BOND).encumberedQuantity, 0);
+        assertEq(custodyRegistry.getCustodyState(C.CORP_BOND, bankA).encumberedQuantity, 0);
     }
 }

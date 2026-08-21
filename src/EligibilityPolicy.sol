@@ -5,6 +5,7 @@ import {ProtocolAccessManager} from "./ProtocolAccessManager.sol";
 import {Roles} from "./libs/Roles.sol";
 import {AssetRegistry} from "./AssetRegistry.sol";
 import {CustodyRegistry} from "./CustodyRegistry.sol";
+import {AttestationRegistry} from "./AttestationRegistry.sol";
 import {ValuationOracle} from "./ValuationOracle.sol";
 
 /**
@@ -30,6 +31,7 @@ contract EligibilityPolicy {
     ProtocolAccessManager public immutable access;
     AssetRegistry public immutable assetRegistry;
     CustodyRegistry public immutable custodyRegistry;
+    AttestationRegistry public immutable attestationRegistry;
     ValuationOracle public immutable valuationOracle;
 
     mapping(AssetRegistry.AssetType => AssetPolicy) public policies;
@@ -46,11 +48,13 @@ contract EligibilityPolicy {
         ProtocolAccessManager access_,
         AssetRegistry assetRegistry_,
         CustodyRegistry custodyRegistry_,
+        AttestationRegistry attestationRegistry_,
         ValuationOracle valuationOracle_
     ) {
         access = access_;
         assetRegistry = assetRegistry_;
         custodyRegistry = custodyRegistry_;
+        attestationRegistry = attestationRegistry_;
         valuationOracle = valuationOracle_;
         defaultMinimumTerm = 90 days;
     }
@@ -102,10 +106,18 @@ contract EligibilityPolicy {
 
         // Custody attestation must be recorded for this asset under this owner,
         // with positive available quantity.
-        CustodyRegistry.CustodyState memory cs = custodyRegistry.getCustodyState(assetId);
+        CustodyRegistry.CustodyState memory cs = custodyRegistry.getCustodyState(assetId, owner);
         if (cs.lastAttestationId == bytes32(0)) return false;
-        if (cs.owner != owner) return false;
-        if (custodyRegistry.availableQuantity(assetId) == 0) return false;
+        if (custodyRegistry.availableQuantity(assetId, owner) == 0) return false;
+
+        // The underlying attestation must still be valid (not expired, not revoked).
+        // Reverts are caught so that a stale attestation simply makes the asset ineligible
+        // rather than reverting the entire read call.
+        try attestationRegistry.verifyAttestation(cs.lastAttestationId) {
+            // valid — continue
+        } catch {
+            return false;
+        }
 
         return true;
     }

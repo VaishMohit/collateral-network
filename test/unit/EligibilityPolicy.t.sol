@@ -64,7 +64,7 @@ contract EligibilityPolicyTest is TestBase {
     function test_notEligibleWhenQuantityExhausted() public {
         _attest(C.T_BOND, bankA, 10_000, custodianA, C.PK_CUSTODIAN_A);
         vm.prank(address(collateralManager));
-        custodyRegistry.applyEncumbrance(C.T_BOND, 10_000);
+        custodyRegistry.applyEncumbrance(C.T_BOND, bankA, 10_000);
         assertFalse(eligibility.isEligible(C.T_BOND, bankA));
     }
 

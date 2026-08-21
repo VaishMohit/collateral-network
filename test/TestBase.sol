@@ -77,12 +77,17 @@ abstract contract TestBase is Test {
 
         vm.startPrank(admin);
         access = new ProtocolAccessManager(admin);
-        audit = new AuditRegistry();
+        audit = new AuditRegistry(access);
         assetRegistry = new AssetRegistry(access, audit);
         attestationRegistry = new AttestationRegistry(access, assetRegistry, audit);
         custodyRegistry = new CustodyRegistry(access, attestationRegistry, audit);
         complianceRegistry = new ComplianceAttestationRegistry(access, audit);
         cash = new CashToken(access);
+
+        // Register workflow contracts as allowed AuditRegistry writers before any log() calls.
+        audit.addWriter(address(assetRegistry));
+        audit.addWriter(address(attestationRegistry));
+        audit.addWriter(address(complianceRegistry));
 
         assetRegistry.registerAsset(
             C.T_BOND,
@@ -111,7 +116,7 @@ abstract contract TestBase is Test {
         assetRegistry.activateAsset(C.CORP_BOND);
 
         oracle = new ValuationOracle(access);
-        eligibility = new EligibilityPolicy(access, assetRegistry, custodyRegistry, oracle);
+        eligibility = new EligibilityPolicy(access, assetRegistry, custodyRegistry, attestationRegistry, oracle);
 
         collateralManager =
             new CollateralManager(access, assetRegistry, custodyRegistry, eligibility, complianceRegistry, audit);
@@ -126,6 +131,12 @@ abstract contract TestBase is Test {
             settlement,
             audit
         );
+
+        // Register remaining workflow contracts as allowed AuditRegistry writers.
+        audit.addWriter(address(collateralManager));
+        audit.addWriter(address(marginManager));
+        audit.addWriter(address(repoManager));
+        audit.addWriter(address(settlement));
 
         access.grantRole(Roles.BANK, bankA);
         access.grantRole(Roles.BANK, bankB);

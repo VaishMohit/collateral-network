@@ -41,7 +41,7 @@ contract RepoFlowTest is TestBase {
         assertEq(uint256(repoManager.getRepo(repoId).status), uint256(RepoManager.RepoStatus.CLOSED));
         assertEq(uint256(collateralManager.getPosition(positionId).status), uint256(CollateralManager.CollateralStatus.RELEASED));
         assertEq(tBondToken.balanceOf(bankA), C.T_BOND_QUANTITY);
-        assertEq(custodyRegistry.getCustodyState(C.T_BOND).encumberedQuantity, 0);
+        assertEq(custodyRegistry.getCustodyState(C.T_BOND, bankA).encumberedQuantity, 0);
         assertEq(cash.balanceOf(bankB), C.BANK_B_CASH - C.REPO_CASH + owed);
         assertEq(cash.balanceOf(bankA), C.BANK_A_CASH + C.REPO_CASH - owed);
     }
@@ -78,8 +78,8 @@ contract RepoFlowTest is TestBase {
         assertEq(uint256(collateralManager.getPosition(corpPosition).status), uint256(CollateralManager.CollateralStatus.RELEASED));
         assertEq(tBondToken.balanceOf(bankA), C.T_BOND_QUANTITY);
         assertEq(corpBondToken.balanceOf(bankA), C.CORP_BOND_QUANTITY);
-        assertEq(custodyRegistry.getCustodyState(C.T_BOND).encumberedQuantity, 0);
-        assertEq(custodyRegistry.getCustodyState(C.CORP_BOND).encumberedQuantity, 0);
+        assertEq(custodyRegistry.getCustodyState(C.T_BOND, bankA).encumberedQuantity, 0);
+        assertEq(custodyRegistry.getCustodyState(C.CORP_BOND, bankA).encumberedQuantity, 0);
     }
 
     function test_repoDefaultAndCollateralEnforcement() public {
@@ -102,7 +102,7 @@ contract RepoFlowTest is TestBase {
         assertEq(uint256(collateralManager.getPosition(positionId).status), uint256(CollateralManager.CollateralStatus.RECOVERY));
         assertEq(tBondToken.balanceOf(bankB), C.T_BOND_QUANTITY);
         assertEq(tBondToken.balanceOf(address(collateralManager)), 0);
-        assertEq(custodyRegistry.getCustodyState(C.T_BOND).encumberedQuantity, 0);
+        assertEq(custodyRegistry.getCustodyState(C.T_BOND, bankA).encumberedQuantity, 0);
     }
 
     function test_doubleSettlementAttemptReverts() public {

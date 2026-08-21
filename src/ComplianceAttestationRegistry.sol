@@ -115,7 +115,7 @@ contract ComplianceAttestationRegistry {
         bytes32 id = subjectAttestation[subject];
         if (id == bytes32(0)) return false;
         ComplianceAttestation storage c = attestations[id];
-        if (c.expiry <= block.timestamp) revert ComplianceAttestationExpired();
+        if (c.expiry <= block.timestamp) return false;
         return c.kycPassed && c.amlPassed && c.sanctionsPassed && c.jurisdictionAccepted;
     }
 }

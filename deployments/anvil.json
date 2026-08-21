@@ -34,7 +34,7 @@
     "privateKey": "62974329224788767027781683098475633401756052717538436960952236504350829969338",
     "role": "COLLATERAL_AGENT"
   },
-  "collateralManager": "0x9A9f2CCfdE556A7E9Ff0848998Aa4a0CFD8863AE",
+  "collateralManager": "0xc6e7DF5E7b4f2A278906862b61205850344D4e7d",
   "complianceProvider": {
     "address": "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f",
     "label": "COMPLIANCEPROVIDER",
@@ -42,7 +42,7 @@
     "role": "COMPLIANCE_PROVIDER"
   },
   "complianceRegistry": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
-  "corpBondToken": "0x610178dA211FEF7D417bC0e6FeD39F05609AD788",
+  "corpBondToken": "0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82",
   "custodianA": {
     "address": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
     "label": "CUSTODIANA",
@@ -50,8 +50,8 @@
     "role": "CUSTODIAN"
   },
   "custodyRegistry": "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
-  "eligibilityPolicy": "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1",
-  "marginManager": "0x3Aa5ebB10DC797CAC828524e59A333d0A371443c",
+  "eligibilityPolicy": "0x3Aa5ebB10DC797CAC828524e59A333d0A371443c",
+  "marginManager": "0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1",
   "mockCsd": {
     "address": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
     "label": "MOCKCSD",
@@ -59,8 +59,8 @@
     "role": "AUTHORITATIVE_ASSET_REGISTRY"
   },
   "note": "LOCAL ANVIL TESTNET ONLY - deterministic development keys. Never use in production.",
-  "pledgeManager": "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
-  "repoManager": "0x59b670e9fA9D0A427751Af201D676719a970857b",
+  "pledgeManager": "0x59b670e9fA9D0A427751Af201D676719a970857b",
+  "repoManager": "0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f",
   "roles": {
     "BANK": "pledge / substitute / release own collateral, repo",
     "COLLATERAL_AGENT": "verifies/approves collateral workflows",
@@ -75,9 +75,9 @@
     "privateKey": "34255578182196337387402795165358488979336877446916507045826899239861607154518",
     "role": "SETTLEMENT_AGENT"
   },
-  "settlementCoordinator": "0xc6e7DF5E7b4f2A278906862b61205850344D4e7d",
-  "tBondToken": "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
-  "valuationOracle": "0x0B306BF915C4d645ff596e518fAf3F9669b97016",
+  "settlementCoordinator": "0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44",
+  "tBondToken": "0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0",
+  "valuationOracle": "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
   "valuationProvider": {
     "address": "0x976EA74026E726554dB657fA54763abd0C3a0aa9",
     "label": "VALUATIONPROVIDER",

@@ -180,7 +180,7 @@ contract Demo is Script {
                 "  status=PLEDGED"
             )
         );
-        _check(custodyRegistry.availableQuantity(C.T_BOND) == 0, "custody available = 0 (fully encumbered)");
+        _check(custodyRegistry.availableQuantity(C.T_BOND, bankA) == 0, "custody available = 0 (fully encumbered)");
         _check(tBondToken.balanceOf(bankA) == 0, "treasury tokens locked in vault");
 
         // ------------------- STEP 10-11: repo settles (DvP) ------------------
@@ -248,8 +248,8 @@ contract Demo is Script {
         CollateralManager.CollateralPosition memory active = collateralManager.getPosition(replacementId);
         _check(replaced.status == CollateralManager.CollateralStatus.RELEASED, "old released");
         _check(active.status == CollateralManager.CollateralStatus.PLEDGED, "replacement pledged");
-        _check(custodyRegistry.availableQuantity(C.CORP_BOND) == 0, "corp encumbered");
-        _check(custodyRegistry.availableQuantity(C.T_BOND) == C.T_BOND_QUANTITY, "treasury un-encumbered");
+        _check(custodyRegistry.availableQuantity(C.CORP_BOND, bankA) == 0, "corp encumbered");
+        _check(custodyRegistry.availableQuantity(C.T_BOND, bankA) == C.T_BOND_QUANTITY, "treasury un-encumbered");
         console2.log(
             string.concat(
                 "[15-18] Substitution: ",
@@ -304,8 +304,8 @@ contract Demo is Script {
         uint256 auditRecords = audit.recordCount();
         console2.log("----------------------------------------------------------");
         console2.log(string.concat("Audit records written: ", vm.toString(auditRecords)));
-        _check(custodyRegistry.availableQuantity(C.CORP_BOND) == C.CORP_BOND_QUANTITY, "custody fully unencumbered");
-        _check(custodyRegistry.availableQuantity(C.T_BOND) == C.T_BOND_QUANTITY, "custody fully unencumbered");
+        _check(custodyRegistry.availableQuantity(C.CORP_BOND, bankA) == C.CORP_BOND_QUANTITY, "custody fully unencumbered");
+        _check(custodyRegistry.availableQuantity(C.T_BOND, bankA) == C.T_BOND_QUANTITY, "custody fully unencumbered");
         console2.log("Reconciliation snapshot: CSD state == on-chain state (MATCH)");
         console2.log("DEMO COMPLETE");
         }

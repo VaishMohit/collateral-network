@@ -49,7 +49,7 @@ contract PledgeManagerTest is TestBase {
         // Tokens are locked in the vault; custody mirror encumbered.
         assertEq(tBondToken.balanceOf(address(collateralManager)), C.T_BOND_QUANTITY);
         assertEq(tBondToken.balanceOf(bankA), 0);
-        assertEq(custodyRegistry.getCustodyState(C.T_BOND).encumberedQuantity, C.T_BOND_QUANTITY);
+        assertEq(custodyRegistry.getCustodyState(C.T_BOND, bankA).encumberedQuantity, C.T_BOND_QUANTITY);
     }
 
     function test_reserveBeforeVerifyReverts() public {
@@ -109,7 +109,7 @@ contract PledgeManagerTest is TestBase {
         CollateralManager.CollateralPosition memory p = collateralManager.getPosition(positionId);
         assertEq(uint256(p.status), uint256(CollateralManager.CollateralStatus.AVAILABLE));
         assertEq(tBondToken.balanceOf(bankA), C.T_BOND_QUANTITY);
-        assertEq(custodyRegistry.getCustodyState(C.T_BOND).encumberedQuantity, 0);
+        assertEq(custodyRegistry.getCustodyState(C.T_BOND, bankA).encumberedQuantity, 0);
     }
 
     function test_doublePledgeSameCollateralReverts() public {
