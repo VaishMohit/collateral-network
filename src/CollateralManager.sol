@@ -154,9 +154,7 @@ contract CollateralManager {
         uint256 used = l.reserved + l.pledged;
         uint256 tokenAvailable = tokenBalance > used ? tokenBalance - used : 0;
 
-        CustodyRegistry.CustodyState memory cs = custodyRegistry.getCustodyState(assetId);
-        if (cs.owner != provider) return 0;
-        uint256 custodyAvailable = custodyRegistry.availableQuantity(assetId);
+        uint256 custodyAvailable = custodyRegistry.availableQuantity(assetId, provider);
 
         return tokenAvailable < custodyAvailable ? tokenAvailable : custodyAvailable;
     }
@@ -274,6 +272,7 @@ contract CollateralManager {
 
         _unlock(positionId);
         p.status = CollateralStatus.AVAILABLE;
+        delete validated[positionId];
     }
 
     function markApproved(bytes32 positionId) external onlyOperator {
@@ -384,7 +383,7 @@ contract CollateralManager {
         l.released += p.quantity;
 
         // Clear the encumbrance mirror: the securities have left the collateral pool.
-        custodyRegistry.applyEncumbrance(p.assetId, -int256(p.quantity));
+        custodyRegistry.applyEncumbrance(p.assetId, p.provider, -int256(p.quantity));
 
         p.status = CollateralStatus.RECOVERY;
 
@@ -546,7 +545,7 @@ contract CollateralManager {
         address token = assetRegistry.getToken(p.assetId);
         require(token != address(0), "Collateral: no token");
         ITokenizedSecurity(token).forceTransfer(p.provider, address(this), p.quantity);
-        custodyRegistry.applyEncumbrance(p.assetId, int256(p.quantity));
+        custodyRegistry.applyEncumbrance(p.assetId, p.provider, int256(p.quantity));
         CollateralLedger storage l = ledgerByAssetIdProvider(p.assetId, p.provider);
         l.reserved += p.quantity;
         emit CollateralLocked(positionId, p.quantity);
@@ -557,7 +556,7 @@ contract CollateralManager {
         address token = assetRegistry.getToken(p.assetId);
         require(token != address(0), "Collateral: no token");
         ITokenizedSecurity(token).forceTransfer(address(this), p.provider, p.quantity);
-        custodyRegistry.applyEncumbrance(p.assetId, -int256(p.quantity));
+        custodyRegistry.applyEncumbrance(p.assetId, p.provider, -int256(p.quantity));
         CollateralLedger storage l = ledgerByAssetIdProvider(p.assetId, p.provider);
         l.reserved -= p.quantity;
         emit CollateralUnlocked(positionId, p.quantity);
@@ -572,7 +571,7 @@ contract CollateralManager {
         address token = assetRegistry.getToken(p.assetId);
         require(token != address(0), "Collateral: no token");
         ITokenizedSecurity(token).forceTransfer(address(this), p.provider, p.quantity);
-        custodyRegistry.applyEncumbrance(p.assetId, -int256(p.quantity));
+        custodyRegistry.applyEncumbrance(p.assetId, p.provider, -int256(p.quantity));
 
         CollateralLedger storage l = ledgerByAssetIdProvider(p.assetId, p.provider);
         l.pledged -= p.quantity;

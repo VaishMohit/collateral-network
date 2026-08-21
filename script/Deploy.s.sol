@@ -66,12 +66,17 @@ contract Deploy is Script {
 
         // ---- Core infrastructure ----
         access = new ProtocolAccessManager(admin);
-        audit = new AuditRegistry();
+        audit = new AuditRegistry(access);
         assetRegistry = new AssetRegistry(access, audit);
         attestationRegistry = new AttestationRegistry(access, assetRegistry, audit);
         custodyRegistry = new CustodyRegistry(access, attestationRegistry, audit);
         complianceRegistry = new ComplianceAttestationRegistry(access, audit);
         cash = new CashToken(access);
+
+        // Register workflow contracts as allowed AuditRegistry writers before any log() calls.
+        audit.addWriter(address(assetRegistry));
+        audit.addWriter(address(attestationRegistry));
+        audit.addWriter(address(complianceRegistry));
 
         // ---- Assets + tokens (V1: exactly two securities) ----
         assetRegistry.registerAsset(
@@ -103,7 +108,7 @@ contract Deploy is Script {
 
         // ---- Valuation + policy ----
         oracle = new ValuationOracle(access);
-        eligibility = new EligibilityPolicy(access, assetRegistry, custodyRegistry, oracle);
+        eligibility = new EligibilityPolicy(access, assetRegistry, custodyRegistry, attestationRegistry, oracle);
 
         // ---- Collateral layer ----
         collateralManager =
@@ -119,6 +124,12 @@ contract Deploy is Script {
             settlement,
             audit
         );
+
+        // Register remaining workflow contracts as allowed AuditRegistry writers.
+        audit.addWriter(address(collateralManager));
+        audit.addWriter(address(marginManager));
+        audit.addWriter(address(repoManager));
+        audit.addWriter(address(settlement));
 
         // ---- Roles ----
         access.grantRole(Roles.BANK, bankA);

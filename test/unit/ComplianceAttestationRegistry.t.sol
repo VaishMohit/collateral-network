@@ -49,8 +49,7 @@ contract ComplianceAttestationRegistryTest is TestBase {
     function test_expiryStopsCompliance() public {
         _submitCompliance(bankA);
         vm.warp(block.timestamp + C.COMPLIANCE_TTL + 1);
-        vm.expectRevert(ComplianceAttestationRegistry.ComplianceAttestationExpired.selector);
-        complianceRegistry.isCompliant(bankA);
+        assertFalse(complianceRegistry.isCompliant(bankA));
     }
 
     function test_unattestedSubjectNotCompliant() public {

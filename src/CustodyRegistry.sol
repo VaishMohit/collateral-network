@@ -8,7 +8,7 @@ import {AuditRegistry} from "./AuditRegistry.sol";
 
 /**
  * @title CustodyRegistry
- * @notice On-chain mirror of the *current custody relationship* for each asset.
+ * @notice On-chain mirror of the *current custody relationship* for each asset-owner pair.
  *
  * @dev This contract does NOT claim to be the CSD. It holds the latest state
  *      attested by the CSD/Custodian plus the encumbrance delta that on-chain
@@ -18,6 +18,10 @@ import {AuditRegistry} from "./AuditRegistry.sol";
  *      attestation. Encumbrance can ONLY change through the CollateralManager
  *      (the one contract holding the `COLLATERAL_MANAGER` role), i.e. as a
  *      consequence of a collateral operation — never directly by a bank.
+ *
+ *      Keyed by (assetId, owner) so that each owner's custody state is
+ *      independent — A holding 100 units of USST does not interfere with
+ *      B's custody state for the same asset.
  */
 contract CustodyRegistry {
     bytes32 public constant COLLATERAL_MANAGER_ROLE = keccak256("COLLATERAL_MANAGER");
@@ -37,10 +41,11 @@ contract CustodyRegistry {
     AttestationRegistry public immutable attestationRegistry;
     AuditRegistry public immutable audit;
 
-    mapping(bytes32 => CustodyState) public custodyStates;
+    /// assetId => owner => custody state
+    mapping(bytes32 => mapping(address => CustodyState)) public custodyStates;
 
-    event CustodyStateUpdated(bytes32 indexed assetId, bytes32 indexed attestationId);
-    event EncumbranceChanged(bytes32 indexed assetId, int256 delta, uint256 newEncumbered);
+    event CustodyStateUpdated(bytes32 indexed assetId, address indexed owner, bytes32 indexed attestationId);
+    event EncumbranceChanged(bytes32 indexed assetId, address indexed owner, int256 delta, uint256 newEncumbered);
 
     error AssetNotAttested();
     error OnlyCollateralManager();
@@ -70,7 +75,7 @@ contract CustodyRegistry {
 
         AttestationRegistry.StoredAttestation memory stored = attestationRegistry.getAttestation(attestationId);
         AttestationRegistry.AssetAttestation memory a = stored.data;
-        CustodyState storage cs = custodyStates[a.assetId];
+        CustodyState storage cs = custodyStates[a.assetId][a.owner];
         cs.assetId = a.assetId;
         cs.csd = msg.sender;
         cs.owner = a.owner;
@@ -80,17 +85,17 @@ contract CustodyRegistry {
         cs.lastAttestationId = attestationId;
         cs.lastUpdate = block.timestamp;
 
-        emit CustodyStateUpdated(a.assetId, attestationId);
+        emit CustodyStateUpdated(a.assetId, a.owner, attestationId);
     }
 
     /**
      * @notice Adjust the on-chain encumbrance mirror as collateral is reserved
      *         or released. Only the CollateralManager holds this role.
      */
-    function applyEncumbrance(bytes32 assetId, int256 delta) external {
+    function applyEncumbrance(bytes32 assetId, address owner, int256 delta) external {
         if (!access.hasRole(COLLATERAL_MANAGER_ROLE, msg.sender)) revert OnlyCollateralManager();
 
-        CustodyState storage cs = custodyStates[assetId];
+        CustodyState storage cs = custodyStates[assetId][owner];
         if (cs.totalQuantity == 0 && cs.lastAttestationId == bytes32(0)) revert AssetNotAttested();
 
         if (delta < 0) {
@@ -101,28 +106,26 @@ contract CustodyRegistry {
         }
         if (cs.encumberedQuantity > cs.totalQuantity) revert InvalidEncumbrance();
 
-        emit EncumbranceChanged(assetId, delta, cs.encumberedQuantity);
+        emit EncumbranceChanged(assetId, owner, delta, cs.encumberedQuantity);
     }
 
     /* ------------------------------------------------------------------ */
     /* Views                                                               */
     /* ------------------------------------------------------------------ */
 
-    function getCustodyState(bytes32 assetId) external view returns (CustodyState memory) {
-        return custodyStates[assetId];
+    function getCustodyState(bytes32 assetId, address owner) external view returns (CustodyState memory) {
+        return custodyStates[assetId][owner];
     }
 
-    function availableQuantity(bytes32 assetId) public view returns (uint256) {
-        CustodyState storage cs = custodyStates[assetId];
+    function availableQuantity(bytes32 assetId, address owner) public view returns (uint256) {
+        CustodyState storage cs = custodyStates[assetId][owner];
         if (cs.totalQuantity == 0) return 0;
         if (cs.encumberedQuantity >= cs.totalQuantity) return 0;
         return cs.totalQuantity - cs.encumberedQuantity;
     }
 
     function isAvailableForCollateral(bytes32 assetId, address owner, uint256 quantity) external view returns (bool) {
-        CustodyState storage cs = custodyStates[assetId];
-        if (cs.owner != owner) return false;
         if (quantity == 0) return false;
-        return quantity <= availableQuantity(assetId);
+        return quantity <= availableQuantity(assetId, owner);
     }
 }

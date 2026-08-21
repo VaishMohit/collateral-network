@@ -97,7 +97,7 @@ contract RepoManagerTest is TestBase {
         assertEq(uint256(repoManager.getRepo(repoId).status), uint256(RepoManager.RepoStatus.CLOSED));
         assertEq(uint256(collateralManager.getPosition(positionId).status), uint256(CollateralManager.CollateralStatus.RELEASED));
         assertEq(tBondToken.balanceOf(bankA), C.T_BOND_QUANTITY);
-        assertEq(custodyRegistry.getCustodyState(C.T_BOND).encumberedQuantity, 0);
+        assertEq(custodyRegistry.getCustodyState(C.T_BOND, bankA).encumberedQuantity, 0);
         assertEq(cash.balanceOf(bankB), C.BANK_B_CASH - C.REPO_CASH + owed);
     }
 
