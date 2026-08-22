@@ -50,6 +50,7 @@ contract CustodyRegistry {
     error AssetNotAttested();
     error OnlyCollateralManager();
     error InvalidEncumbrance();
+    error UnauthorizedCustody();
 
     constructor(
         ProtocolAccessManager access_,
@@ -68,7 +69,7 @@ contract CustodyRegistry {
     function updateCustodyAttestation(bytes32 attestationId) external {
         bool isCsd = access.hasRole(Roles.CSD, msg.sender);
         bool isCustodian = access.hasRole(Roles.CUSTODIAN, msg.sender);
-        require(isCsd || isCustodian, "CustodyRegistry: unauthorized");
+        if (!isCsd && !isCustodian) revert UnauthorizedCustody();
 
         // Full validity check (exists, not revoked, not expired).
         attestationRegistry.verifyAttestation(attestationId);

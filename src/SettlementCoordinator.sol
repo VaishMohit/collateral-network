@@ -6,6 +6,7 @@ import {Roles} from "./libs/Roles.sol";
 import {AuditRegistry} from "./AuditRegistry.sol";
 import {ICollateralManager} from "./interfaces/ICollateralManager.sol";
 import {ICashToken} from "./interfaces/ICashToken.sol";
+import {ReentrancyGuard} from "./libs/ReentrancyGuard.sol";
 
 /**
  * @title SettlementCoordinator
@@ -24,7 +25,7 @@ import {ICashToken} from "./interfaces/ICashToken.sol";
  *        7. Transfer cash          (delivery to the cash borrower)
  *        8. Emit settlement event
  */
-contract SettlementCoordinator {
+contract SettlementCoordinator is ReentrancyGuard {
     ProtocolAccessManager public immutable access;
     ICollateralManager public immutable collateral;
     ICashToken public immutable cash;
@@ -35,6 +36,7 @@ contract SettlementCoordinator {
     error InsufficientCollateralValue();
     error InsufficientCash();
     error PositionDoesNotExist();
+    error CashTransferFailed();
 
     constructor(
         ProtocolAccessManager access_,
@@ -62,7 +64,7 @@ contract SettlementCoordinator {
         address lender,
         bytes32 collateralPositionId,
         uint256 cashAmount
-    ) external onlySettlementAgent {
+    ) external onlySettlementAgent nonReentrant {
         ICollateralManager.CollateralPosition memory p = collateral.getPosition(collateralPositionId);
         if (p.positionId == bytes32(0)) revert PositionDoesNotExist();
         if (p.status != ICollateralManager.CollateralStatus.PLEDGED) revert CollateralNotPledged();
@@ -71,7 +73,7 @@ contract SettlementCoordinator {
 
         // Collateral is already locked in the CollateralManager vault (reserve).
         // Lock + deliver the cash leg atomically:
-        require(cash.transferFrom(lender, borrower, cashAmount), "Settlement: cash transfer failed");
+        if (!cash.transferFrom(lender, borrower, cashAmount)) revert CashTransferFailed();
 
         audit.log(
             AuditRegistry.AuditEventType.SETTLEMENT_COMPLETED,

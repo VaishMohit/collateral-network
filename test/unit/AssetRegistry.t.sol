@@ -32,7 +32,7 @@ contract AssetRegistryTest is TestBase {
 
     function test_bankCannotRegister() public {
         vm.prank(bankA);
-        vm.expectRevert("AssetRegistry: unauthorized");
+        vm.expectRevert(AssetRegistry.NotAdminOrCsd.selector);
         assetRegistry.registerAsset(keccak256("Z"), "US-Z", AssetRegistry.AssetType.TREASURY, address(0x123), 100, 1_700_000_000, AssetRegistry.Rating.UNRATED);
     }
 
@@ -44,13 +44,13 @@ contract AssetRegistryTest is TestBase {
 
     function test_unknownTypeReverts() public {
         vm.prank(admin);
-        vm.expectRevert("AssetRegistry: unknown type");
+        vm.expectRevert(AssetRegistry.UnknownAssetType.selector);
         assetRegistry.registerAsset(keccak256("U"), "US-U", AssetRegistry.AssetType.UNKNOWN, address(0x123), 100, 1_700_000_000, AssetRegistry.Rating.UNRATED);
     }
 
     function test_setTokenOnlyAdmin() public {
         vm.prank(bankA);
-        vm.expectRevert("AssetRegistry: not admin");
+        vm.expectRevert(AssetRegistry.NotAdminOrCsd.selector);
         assetRegistry.setToken(C.T_BOND, address(0xdead));
     }
 
@@ -78,7 +78,7 @@ contract AssetRegistryTest is TestBase {
 
     function test_activateOnlyAdmin() public {
         vm.prank(bankA);
-        vm.expectRevert("AssetRegistry: not admin");
+        vm.expectRevert(AssetRegistry.NotAdminOrCsd.selector);
         assetRegistry.activateAsset(C.T_BOND);
     }
 

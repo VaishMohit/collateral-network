@@ -54,13 +54,19 @@ contract ProtocolAccessManager {
     /* Modifiers                                                           */
     /* ------------------------------------------------------------------ */
 
+    error NotAdmin();
+    error MissingRole();
+    error ZeroAdmin();
+    error ZeroAccount();
+    error AdminOnlyViaSetAdmin();
+
     modifier onlyAdmin() {
-        require(msg.sender == admin, "AccessManager: not admin");
+        if (msg.sender != admin) revert NotAdmin();
         _;
     }
 
     modifier onlyRole(bytes32 role) {
-        require(hasRole[role][msg.sender], "AccessManager: missing role");
+        if (!hasRole[role][msg.sender]) revert MissingRole();
         _;
     }
 
@@ -69,7 +75,7 @@ contract ProtocolAccessManager {
     /* ------------------------------------------------------------------ */
 
     constructor(address initialAdmin) {
-        require(initialAdmin != address(0), "AccessManager: zero admin");
+        if (initialAdmin == address(0)) revert ZeroAdmin();
         admin = initialAdmin;
         hasRole[ADMIN][initialAdmin] = true;
         emit RoleGranted(ADMIN, initialAdmin, address(0));
@@ -80,7 +86,7 @@ contract ProtocolAccessManager {
     /* ------------------------------------------------------------------ */
 
     function setAdmin(address newAdmin) external onlyAdmin {
-        require(newAdmin != address(0), "AccessManager: zero admin");
+        if (newAdmin == address(0)) revert ZeroAdmin();
         address previousAdmin = admin;
         emit AdminChanged(previousAdmin, newAdmin);
         admin = newAdmin;
@@ -97,8 +103,8 @@ contract ProtocolAccessManager {
     /* ------------------------------------------------------------------ */
 
     function grantRole(bytes32 role, address account) external onlyAdmin {
-        require(account != address(0), "AccessManager: zero account");
-        require(role != ADMIN || account == admin, "AccessManager: admin only via setAdmin");
+        if (account == address(0)) revert ZeroAccount();
+        if (role == ADMIN && account != admin) revert AdminOnlyViaSetAdmin();
         if (!hasRole[role][account]) {
             hasRole[role][account] = true;
             emit RoleGranted(role, account, msg.sender);
@@ -113,7 +119,7 @@ contract ProtocolAccessManager {
     }
 
     function requireRole(bytes32 role, address account) external view {
-        require(hasRole[role][account], "AccessManager: missing role");
+        if (!hasRole[role][account]) revert MissingRole();
     }
 
     function isAdmin(address account) external view returns (bool) {

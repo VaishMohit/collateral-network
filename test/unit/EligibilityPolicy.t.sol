@@ -36,7 +36,7 @@ contract EligibilityPolicyTest is TestBase {
 
     function test_haircutAtOrAboveFullReverts() public {
         vm.prank(admin);
-        vm.expectRevert("Eligibility: haircut >= 100%");
+        vm.expectRevert(EligibilityPolicy.HaircutTooHigh.selector);
         eligibility.setPolicy(AssetRegistry.AssetType.TREASURY, true, 10_000, 0);
     }
 
@@ -117,14 +117,14 @@ contract EligibilityPolicyTest is TestBase {
 
     function test_assessCollateralNotEligibleReverts() public {
         _submitPrice(C.T_BOND, 10_000, 1);
-        vm.expectRevert("Eligibility: not eligible");
+        vm.expectRevert(EligibilityPolicy.NotEligible.selector);
         eligibility.assessCollateral(C.T_BOND, bankA, 10_000);
     }
 
     function test_assessCollateralUnavailableReverts() public {
         _attest(C.T_BOND, bankA, 10_000, custodianA, C.PK_CUSTODIAN_A);
         _submitPrice(C.T_BOND, 10_000, 1);
-        vm.expectRevert("Eligibility: custody unavailable");
+        vm.expectRevert(EligibilityPolicy.CustodyUnavailable.selector);
         eligibility.assessCollateral(C.T_BOND, bankA, 10_001);
     }
 }

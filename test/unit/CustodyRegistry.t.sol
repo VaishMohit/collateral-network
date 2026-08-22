@@ -27,7 +27,7 @@ contract CustodyRegistryTest is TestBase {
         a.attestationId = keccak256("SECOND");
         _submitCustodyAttestation(a, C.PK_CUSTODIAN_A);
         vm.prank(bankA);
-        vm.expectRevert("CustodyRegistry: unauthorized");
+        vm.expectRevert(CustodyRegistry.UnauthorizedCustody.selector);
         custodyRegistry.updateCustodyAttestation(a.attestationId);
     }
 

@@ -47,6 +47,7 @@ contract MarginManager {
     error Unauthorized();
     error NoRequirement();
     error NoShortfall();
+    error ZeroRequirement();
 
     constructor(ProtocolAccessManager access_, ICollateralManager collateral_, AuditRegistry audit_) {
         access = access_;
@@ -63,7 +64,7 @@ contract MarginManager {
 
     /// @notice Set the collateral requirement for an obligation (receiver/agent).
     function setRequirement(bytes32 obligationId, uint256 requiredValue) external onlyBankOrAgent {
-        require(requiredValue > 0, "Margin: zero requirement");
+        if (requiredValue == 0) revert ZeroRequirement();
         requirements[obligationId] = requiredValue;
         emit RequirementSet(obligationId, requiredValue);
     }

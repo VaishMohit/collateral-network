@@ -9,6 +9,7 @@ import {EligibilityPolicy} from "./EligibilityPolicy.sol";
 import {ComplianceAttestationRegistry} from "./ComplianceAttestationRegistry.sol";
 import {AuditRegistry} from "./AuditRegistry.sol";
 import {ITokenizedSecurity} from "./interfaces/ITokenizedSecurity.sol";
+import {ReentrancyGuard} from "./libs/ReentrancyGuard.sol";
 
 /**
  * @title CollateralManager
@@ -31,7 +32,7 @@ import {ITokenizedSecurity} from "./interfaces/ITokenizedSecurity.sol";
  *      mirror in CustodyRegistry in sync, which is what blocks double pledging
  *      across both the token layer and the custody layer.
  */
-contract CollateralManager {
+contract CollateralManager is ReentrancyGuard {
     enum CollateralStatus {
         AVAILABLE,
         RESERVED,
@@ -80,11 +81,15 @@ contract CollateralManager {
     mapping(bytes32 => bytes32[]) public positionsByObligation;
 
     uint256 public positionCounter;
+    uint256 public constant MAX_OBLIGATION_POSITIONS = 64;
 
     event OperatorSet(address indexed operator, bool enabled);
     event PositionCreated(bytes32 indexed positionId, address indexed provider, address indexed receiver, bytes32 assetId, uint256 quantity);
     event CollateralLocked(bytes32 indexed positionId, uint256 quantity);
     event CollateralUnlocked(bytes32 indexed positionId, uint256 quantity);
+    event ReservationCancelled(bytes32 indexed positionId);
+    event PositionApproved(bytes32 indexed positionId);
+    event PositionDefaulted(bytes32 indexed positionId);
 
     error Unauthorized();
     error NotOperator();
@@ -95,6 +100,9 @@ contract CollateralManager {
     error NotApproved();
     error NoPendingSubstitution();
     error InvalidValueRelation();
+    error ZeroAddress();
+    error NoToken();
+    error ObligationCapReached();
 
     modifier onlyOperator() {
         if (!operators[msg.sender]) revert NotOperator();
@@ -182,8 +190,9 @@ contract CollateralManager {
         uint256 quantity,
         bytes32 obligationId
     ) external onlyOperator returns (bytes32 positionId) {
-        require(provider != address(0) && receiver != address(0), "Collateral: zero address");
+        if (provider == address(0) || receiver == address(0)) revert ZeroAddress();
         if (availableQuantity(assetId, provider) < quantity) revert InsufficientAvailable();
+        if (obligationId != bytes32(0) && positionsByObligation[obligationId].length >= MAX_OBLIGATION_POSITIONS) revert ObligationCapReached();
 
         positionId = _newPositionId();
         positions[positionId] = CollateralPosition({
@@ -244,7 +253,7 @@ contract CollateralManager {
         );
     }
 
-    function reserveCollateral(bytes32 positionId) external onlyOperator {
+    function reserveCollateral(bytes32 positionId) external onlyOperator nonReentrant {
         CollateralPosition storage p = positions[positionId];
         if (!positionExists(positionId)) revert PositionDoesNotExist();
         if (p.status != CollateralStatus.AVAILABLE) revert InvalidStatus();
@@ -265,7 +274,7 @@ contract CollateralManager {
         );
     }
 
-    function cancelReservation(bytes32 positionId) external onlyOperator {
+    function cancelReservation(bytes32 positionId) external onlyOperator nonReentrant {
         CollateralPosition storage p = positions[positionId];
         if (!positionExists(positionId)) revert PositionDoesNotExist();
         if (p.status != CollateralStatus.RESERVED) revert InvalidStatus();
@@ -273,6 +282,7 @@ contract CollateralManager {
         _unlock(positionId);
         p.status = CollateralStatus.AVAILABLE;
         delete validated[positionId];
+        emit ReservationCancelled(positionId);
     }
 
     function markApproved(bytes32 positionId) external onlyOperator {
@@ -280,6 +290,7 @@ contract CollateralManager {
         if (!positionExists(positionId)) revert PositionDoesNotExist();
         if (p.status != CollateralStatus.RESERVED) revert InvalidStatus();
         approved[positionId] = true;
+        emit PositionApproved(positionId);
     }
 
     function finalizePledge(bytes32 positionId) external onlyOperator {
@@ -342,6 +353,7 @@ contract CollateralManager {
         CollateralPosition storage p = positions[positionId];
         if (!positionExists(positionId)) revert PositionDoesNotExist();
         if (p.obligationId == bytes32(0)) {
+            if (positionsByObligation[obligationId].length >= MAX_OBLIGATION_POSITIONS) revert ObligationCapReached();
             p.obligationId = obligationId;
             positionsByObligation[obligationId].push(positionId);
         }
@@ -354,6 +366,7 @@ contract CollateralManager {
             revert InvalidStatus();
         }
         p.status = CollateralStatus.DEFAULTED;
+        emit PositionDefaulted(positionId);
 
         audit.log(
             AuditRegistry.AuditEventType.COLLATERAL_DEFAULTED,
@@ -370,7 +383,7 @@ contract CollateralManager {
      * @notice Post-default enforcement: forceTransfer the locked tokens out of
      *         the vault to the entitled party and mark RECOVERY.
      */
-    function enforceCollateral(bytes32 positionId, address to) external onlyOperator {
+    function enforceCollateral(bytes32 positionId, address to) external onlyOperator nonReentrant {
         CollateralPosition storage p = positions[positionId];
         if (!positionExists(positionId)) revert PositionDoesNotExist();
         if (p.status != CollateralStatus.DEFAULTED) revert InvalidStatus();
@@ -415,8 +428,9 @@ contract CollateralManager {
         if (old.status != CollateralStatus.PLEDGED) revert InvalidStatus();
         if (pendingSubstitution[oldPositionId] != bytes32(0)) revert NoPendingSubstitution();
 
-        require(provider == old.provider && receiver == old.receiver, "Collateral: actor mismatch");
-        require(availableQuantity(assetId, provider) >= quantity, "Collateral: insufficient available");
+        if (provider != old.provider || receiver != old.receiver) revert Unauthorized();
+        if (availableQuantity(assetId, provider) < quantity) revert InsufficientAvailable();
+        if (obligationId != bytes32(0) && positionsByObligation[obligationId].length >= MAX_OBLIGATION_POSITIONS) revert ObligationCapReached();
 
         replacementId = _newPositionId();
         positions[replacementId] = CollateralPosition({
@@ -472,7 +486,7 @@ contract CollateralManager {
         validated[replacementId] = true;
     }
 
-    function reserveReplacement(bytes32 replacementId) external onlyOperator {
+    function reserveReplacement(bytes32 replacementId) external onlyOperator nonReentrant {
         CollateralPosition storage r = positions[replacementId];
         if (!positionExists(replacementId)) revert PositionDoesNotExist();
         if (r.status != CollateralStatus.AVAILABLE) revert InvalidStatus();
@@ -488,7 +502,7 @@ contract CollateralManager {
      * @dev Ordering guarantees: the old collateral is only released AFTER the
      *      replacement is reserved (locked). The old stays encumbered until now.
      */
-    function activateSubstitution(bytes32 oldPositionId) external onlyOperator {
+    function activateSubstitution(bytes32 oldPositionId) external onlyOperator nonReentrant {
         bytes32 replacementId = pendingSubstitution[oldPositionId];
         if (replacementId == bytes32(0)) revert NoPendingSubstitution();
 
@@ -543,7 +557,7 @@ contract CollateralManager {
     function _lock(bytes32 positionId) internal {
         CollateralPosition storage p = positions[positionId];
         address token = assetRegistry.getToken(p.assetId);
-        require(token != address(0), "Collateral: no token");
+        if (token == address(0)) revert NoToken();
         ITokenizedSecurity(token).forceTransfer(p.provider, address(this), p.quantity);
         custodyRegistry.applyEncumbrance(p.assetId, p.provider, int256(p.quantity));
         CollateralLedger storage l = ledgerByAssetIdProvider(p.assetId, p.provider);
@@ -554,7 +568,7 @@ contract CollateralManager {
     function _unlock(bytes32 positionId) internal {
         CollateralPosition storage p = positions[positionId];
         address token = assetRegistry.getToken(p.assetId);
-        require(token != address(0), "Collateral: no token");
+        if (token == address(0)) revert NoToken();
         ITokenizedSecurity(token).forceTransfer(address(this), p.provider, p.quantity);
         custodyRegistry.applyEncumbrance(p.assetId, p.provider, -int256(p.quantity));
         CollateralLedger storage l = ledgerByAssetIdProvider(p.assetId, p.provider);
@@ -569,7 +583,7 @@ contract CollateralManager {
         // finalizePledge), so release moves it out of `pledged` directly rather
         // than via _unlock (which only applies to RESERVED positions).
         address token = assetRegistry.getToken(p.assetId);
-        require(token != address(0), "Collateral: no token");
+        if (token == address(0)) revert NoToken();
         ITokenizedSecurity(token).forceTransfer(address(this), p.provider, p.quantity);
         custodyRegistry.applyEncumbrance(p.assetId, p.provider, -int256(p.quantity));
 
@@ -604,6 +618,24 @@ contract CollateralManager {
 
     function getPositionsByObligation(bytes32 obligationId) external view returns (bytes32[] memory) {
         return positionsByObligation[obligationId];
+    }
+
+    /// @notice Paginated view of positions linked to an obligation.
+    function getPositionsByObligationPaginated(bytes32 obligationId, uint256 offset, uint256 limit)
+        external
+        view
+        returns (bytes32[] memory)
+    {
+        bytes32[] storage all = positionsByObligation[obligationId];
+        if (offset >= all.length) return new bytes32[](0);
+        uint256 end = offset + limit;
+        if (end > all.length) end = all.length;
+        uint256 size = end - offset;
+        bytes32[] memory result = new bytes32[](size);
+        for (uint256 i = 0; i < size; i++) {
+            result[i] = all[offset + i];
+        }
+        return result;
     }
 
     /// @notice Sum of *stored* collateral values for an obligation.

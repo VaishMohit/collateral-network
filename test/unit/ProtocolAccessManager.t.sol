@@ -20,7 +20,7 @@ contract ProtocolAccessManagerTest is TestBase {
     }
 
     function test_constructorRevertsOnZeroAdmin() public {
-        vm.expectRevert("AccessManager: zero admin");
+        vm.expectRevert(ProtocolAccessManager.ZeroAdmin.selector);
         new ProtocolAccessManager(address(0));
     }
 
@@ -35,7 +35,7 @@ contract ProtocolAccessManagerTest is TestBase {
 
     function test_grantRole_nonAdminReverts() public {
         vm.prank(bankA);
-        vm.expectRevert("AccessManager: not admin");
+        vm.expectRevert(ProtocolAccessManager.NotAdmin.selector);
         access.grantRole(Roles.BANK, vm.addr(0x1234));
     }
 
@@ -47,7 +47,7 @@ contract ProtocolAccessManagerTest is TestBase {
 
     function test_grantRole_adminRoleOnlyViaSetAdmin() public {
         vm.prank(admin);
-        vm.expectRevert("AccessManager: admin only via setAdmin");
+        vm.expectRevert(ProtocolAccessManager.AdminOnlyViaSetAdmin.selector);
         access.grantRole(Roles.ADMIN, bankA);
     }
 
@@ -77,13 +77,13 @@ contract ProtocolAccessManagerTest is TestBase {
 
     function test_setAdmin_nonAdminReverts() public {
         vm.prank(bankA);
-        vm.expectRevert("AccessManager: not admin");
+        vm.expectRevert(ProtocolAccessManager.NotAdmin.selector);
         access.setAdmin(vm.addr(0x9999));
     }
 
     function test_setAdmin_zeroReverts() public {
         vm.prank(admin);
-        vm.expectRevert("AccessManager: zero admin");
+        vm.expectRevert(ProtocolAccessManager.ZeroAdmin.selector);
         access.setAdmin(address(0));
     }
 
@@ -95,7 +95,7 @@ contract ProtocolAccessManagerTest is TestBase {
     function test_requireRole() public {
         vm.prank(admin);
         access.requireRole(Roles.BANK, bankA);
-        vm.expectRevert("AccessManager: missing role");
+        vm.expectRevert(ProtocolAccessManager.MissingRole.selector);
         vm.prank(admin);
         access.requireRole(Roles.BANK, vm.addr(0xdead));
     }

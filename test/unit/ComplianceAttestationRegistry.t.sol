@@ -32,7 +32,7 @@ contract ComplianceAttestationRegistryTest is TestBase {
         bytes32 digest = complianceRegistry.complianceDigest(c);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(C.PK_COMPLIANCE_PROVIDER, digest);
         vm.prank(complianceProvider);
-        vm.expectRevert("Compliance: not passed");
+        vm.expectRevert(ComplianceAttestationRegistry.AttestationNotPassed.selector);
         complianceRegistry.submitComplianceAttestation(c, v, r, s);
     }
 
@@ -42,7 +42,7 @@ contract ComplianceAttestationRegistryTest is TestBase {
         bytes32 digest = complianceRegistry.complianceDigest(c);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(C.PK_COMPLIANCE_PROVIDER, digest);
         vm.prank(complianceProvider);
-        vm.expectRevert("Compliance: expired");
+        vm.expectRevert(ComplianceAttestationRegistry.ComplianceAttestationExpired.selector);
         complianceRegistry.submitComplianceAttestation(c, v, r, s);
     }
 
