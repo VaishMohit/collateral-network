@@ -18,7 +18,7 @@ contract MarginManagerTest is TestBase {
 
     function test_setRequirementZeroReverts() public {
         vm.prank(bankB);
-        vm.expectRevert("Margin: zero requirement");
+        vm.expectRevert(MarginManager.ZeroRequirement.selector);
         marginManager.setRequirement(_repoId(), 0);
     }
 

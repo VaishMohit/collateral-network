@@ -7,6 +7,7 @@ import {AuditRegistry} from "./AuditRegistry.sol";
 import {ICollateralManager} from "./interfaces/ICollateralManager.sol";
 import {ICashToken} from "./interfaces/ICashToken.sol";
 import {SettlementCoordinator} from "./SettlementCoordinator.sol";
+import {ReentrancyGuard} from "./libs/ReentrancyGuard.sol";
 
 /**
  * @title RepoManager
@@ -22,7 +23,7 @@ import {SettlementCoordinator} from "./SettlementCoordinator.sol";
  *   the collateral position marked DEFAULTED (V1 records the state, no real
  *   liquidation mechanics).
  */
-contract RepoManager {
+contract RepoManager is ReentrancyGuard {
     enum RepoStatus {
         NONE,
         CREATED,
@@ -65,6 +66,7 @@ contract RepoManager {
     error CollateralValueTooLow();
     error TooEarly();
     error RepoOverdue();
+    error RepaymentFailed();
 
     constructor(
         ProtocolAccessManager access_,
@@ -168,14 +170,14 @@ contract RepoManager {
     /**
      * @notice Repay principal + interest at maturity; release collateral.
      */
-    function repayAndClose(bytes32 repoId) external returns (uint256 repaid) {
+    function repayAndClose(bytes32 repoId) external nonReentrant returns (uint256 repaid) {
         Repo storage r = repos[repoId];
         if (r.repoId == bytes32(0)) revert RepoDoesNotExist();
         if (r.status != RepoStatus.ACTIVE) revert InvalidStatus();
         if (block.timestamp < r.maturity) revert TooEarly();
 
         repaid = _amountOwed(r);
-        require(cash.transferFrom(r.borrower, r.lender, repaid), "Repo: repayment failed");
+        if (!cash.transferFrom(r.borrower, r.lender, repaid)) revert RepaymentFailed();
 
         // Release the collateral back to the borrower. Substitution may have
         // replaced the original position, so release every currently-pledged

@@ -34,10 +34,14 @@ contract PledgeManager {
     ICollateralManager public immutable collateral;
     AuditRegistry public immutable audit;
 
+    /// @dev Tracks who requested release so only the counter-party may approve.
+    mapping(bytes32 => address) public releaseRequestor;
+
     error Unauthorized();
     error PositionDoesNotExist();
     error NotProvider();
     error NotReceiver();
+    error CounterPartyRequired();
 
     constructor(ProtocolAccessManager access_, ICollateralManager collateral_, AuditRegistry audit_) {
         access = access_;
@@ -107,26 +111,30 @@ contract PledgeManager {
         ICollateralManager.CollateralPosition memory p = _getPosition(positionId);
         if (msg.sender != p.provider && msg.sender != p.receiver) revert Unauthorized();
         if (!access.hasRole(Roles.BANK, msg.sender)) revert Unauthorized();
+        releaseRequestor[positionId] = msg.sender;
         collateral.requestRelease(positionId);
     }
 
-    /// @notice The counterparty (or the agent) approves the release.
+    /// @notice The counter-party (or the agent) approves the release.
     function approveRelease(bytes32 positionId) external {
         ICollateralManager.CollateralPosition memory p = _getPosition(positionId);
         bool isAgent = access.hasRole(Roles.COLLATERAL_AGENT, msg.sender);
-        bool isProvider = msg.sender == p.provider;
-        bool isReceiver = msg.sender == p.receiver;
-        // provider can approve if receiver requested; receiver if provider requested;
-        // agent can always approve.
         if (isAgent) {
             collateral.approveRelease(positionId);
             return;
         }
-        if (isProvider || isReceiver) {
+        address requestor = releaseRequestor[positionId];
+        if (requestor == address(0)) revert CounterPartyRequired();
+        // Only the counter-party may approve.
+        if (requestor == p.provider && msg.sender == p.receiver) {
+            delete releaseRequestor[positionId];
             collateral.approveRelease(positionId);
-            return;
+        } else if (requestor == p.receiver && msg.sender == p.provider) {
+            delete releaseRequestor[positionId];
+            collateral.approveRelease(positionId);
+        } else {
+            revert CounterPartyRequired();
         }
-        revert Unauthorized();
     }
 
     /* ------------------------------------------------------------------ */

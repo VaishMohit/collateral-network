@@ -43,6 +43,9 @@ contract EligibilityPolicy {
     error InvalidHaircut();
     error PolicyNotSet();
     error AssetUnknown();
+    error HaircutTooHigh();
+    error NotEligible();
+    error CustodyUnavailable();
 
     constructor(
         ProtocolAccessManager access_,
@@ -73,7 +76,7 @@ contract EligibilityPolicy {
         uint256 haircutBps,
         uint256 minimumTerm
     ) external onlyPolicyAdmin {
-        require(haircutBps < 10000, "Eligibility: haircut >= 100%");
+        if (haircutBps >= 10000) revert HaircutTooHigh();
         policies[assetType] = AssetPolicy({eligible: eligible, haircutBps: haircutBps, minimumTerm: minimumTerm});
         emit PolicyUpdated(assetType, eligible, haircutBps, minimumTerm);
     }
@@ -155,8 +158,8 @@ contract EligibilityPolicy {
         address owner,
         uint256 quantity
     ) external view returns (uint256 marketValue, uint256 collateralValue, uint256 haircutBps) {
-        require(isEligible(assetId, owner), "Eligibility: not eligible");
-        require(custodyRegistry.isAvailableForCollateral(assetId, owner, quantity), "Eligibility: custody unavailable");
+        if (!isEligible(assetId, owner)) revert NotEligible();
+        if (!custodyRegistry.isAvailableForCollateral(assetId, owner, quantity)) revert CustodyUnavailable();
         (marketValue, collateralValue) = getCollateralValue(assetId, quantity);
         haircutBps = getHaircut(assetId);
     }

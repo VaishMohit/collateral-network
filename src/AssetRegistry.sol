@@ -57,6 +57,9 @@ contract AssetRegistry {
     error NotRegistered();
     error AlreadyRegistered();
     error NotActive();
+    error NotAdminOrCsd();
+    error UnknownAssetType();
+    error ZeroAssetId();
 
     constructor(ProtocolAccessManager access_, AuditRegistry audit_) {
         access = access_;
@@ -64,7 +67,7 @@ contract AssetRegistry {
     }
 
     modifier onlyAdmin() {
-        require(access.hasRole(Roles.ADMIN, msg.sender), "AssetRegistry: not admin");
+        if (!access.hasRole(Roles.ADMIN, msg.sender)) revert NotAdminOrCsd();
         _;
     }
 
@@ -82,11 +85,11 @@ contract AssetRegistry {
     ) external {
         bool isAdmin = access.hasRole(Roles.ADMIN, msg.sender);
         bool isCsd = access.hasRole(Roles.CSD, msg.sender);
-        require(isAdmin || isCsd, "AssetRegistry: unauthorized");
+        if (!isAdmin && !isCsd) revert NotAdminOrCsd();
 
         if (registered[assetId]) revert AlreadyRegistered();
-        require(assetType != AssetType.UNKNOWN, "AssetRegistry: unknown type");
-        require(assetId != bytes32(0), "AssetRegistry: zero assetId");
+        if (assetType == AssetType.UNKNOWN) revert UnknownAssetType();
+        if (assetId == bytes32(0)) revert ZeroAssetId();
 
         assets[assetId] = Asset({
             assetId: assetId,

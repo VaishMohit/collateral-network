@@ -42,6 +42,9 @@ contract ComplianceAttestationRegistry {
 
     error NotAuthorizedAttestor();
     error ComplianceAttestationExpired();
+    error AttestationNotPassed();
+    error AttestationMissing();
+    error UnauthorizedRevoke();
 
     constructor(ProtocolAccessManager access_, AuditRegistry audit_) {
         access = access_;
@@ -77,8 +80,8 @@ contract ComplianceAttestationRegistry {
         if (signer != c.attestor) revert NotAuthorizedAttestor();
         if (!access.hasRole(Roles.COMPLIANCE_PROVIDER, signer)) revert NotAuthorizedAttestor();
 
-        require(c.expiry > block.timestamp, "Compliance: expired");
-        require(c.kycPassed && c.amlPassed && c.sanctionsPassed && c.jurisdictionAccepted, "Compliance: not passed");
+        if (c.expiry <= block.timestamp) revert ComplianceAttestationExpired();
+        if (!(c.kycPassed && c.amlPassed && c.sanctionsPassed && c.jurisdictionAccepted)) revert AttestationNotPassed();
 
         attestations[c.attestationId] = c;
         subjectAttestation[c.subject] = c.attestationId;
@@ -97,10 +100,10 @@ contract ComplianceAttestationRegistry {
 
     function revokeComplianceAttestation(bytes32 attestationId) external {
         ComplianceAttestation storage c = attestations[attestationId];
-        require(c.attestor != address(0), "Compliance: missing");
+        if (c.attestor == address(0)) revert AttestationMissing();
         bool isAttestor = msg.sender == c.attestor;
         bool isAdmin = access.hasRole(Roles.ADMIN, msg.sender);
-        require(isAttestor || isAdmin, "Compliance: unauthorized");
+        if (!isAttestor && !isAdmin) revert UnauthorizedRevoke();
 
         if (subjectAttestation[c.subject] == attestationId) subjectAttestation[c.subject] = bytes32(0);
         delete attestations[attestationId];
