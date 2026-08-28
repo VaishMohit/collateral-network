@@ -59,17 +59,61 @@ randomized inputs.
 
 ## Phase 4 — Margin automation
 
-**Goal:** Margin calls happen automatically when prices change.
+**Goal:** Margin calls happen automatically when prices change, driven by a
+CLI/UI operator — mirroring how a Chainlink feed pushes prices and a Chainlink
+keeper (or a DTCC-style margin-desk UI) raises the call. Two actors stay
+separate:
+
+- **Data provider** = `VALUATION_PROVIDER`, submits signed prices (analogous to
+  Chainlink pushing a feed, or a tri-party agent delivering a collateral
+  valuation). In the CLI this is `margin-monitor price update <asset> <price>`,
+  which **only** pushes a price into the oracle — it never evaluates or raises
+  a call.
+- **Operator** = `COLLATERAL_AGENT`, evaluates obligations and raises calls
+  (analogous to Chainlink Automation / a margin-desk UI pressing "run margin
+  call"). In the CLI this is `margin-monitor check` (one evaluation) or `watch`
+  (continuous polling). It consumes the price but never sets it.
+
+**Edge-triggered, two commands (Option A).** A single `price update` does **not**
+auto-trigger evaluation: `price update` and `check` are separate commands from
+separate contract calls (`ValuationOracle.updatePrice` vs
+`MarginManager.evaluateAll`), and nothing on-chain links them. The operator
+explicitly runs `check` after the price moves. A later `watch` loop automates
+repeatedly running `check`.
+
+The on-chain `MarginManager` gains read-only evaluation (`evaluateMargin`,
+`previewMarginCall`), batch evaluation (`evaluateAll`), and bounded margin-call
+history. The CLI exercises the full workflow on an Anvil devnet and can
+later have its operator side swapped for an on-chain Chainlink keeper without
+changing the contract surface.
+
+**CLI keys required.** Two distinct signer keys, one per role:
+
+| Role | Anvil key (`script/LibConstants.sol`) | CLI command |
+|------|----------------------------------------|-------------|
+| VALUATION_PROVIDER | `PK_VALUATION_PROVIDER` | `price update` |
+| COLLATERAL_AGENT | `PK_COLLATERAL_AGENT` | `check`, `watch` |
+
+`status` / `history` are read-only (no key). Keys come from `.env`
+(`VALUATION_PROVIDER_KEY`, `COLLATERAL_AGENT_KEY`), overridable per command.
 
 | Step | Task | Files |
 |------|------|-------|
-| 4.1 | `MarginManager.evaluateMargin(obligationId)` — view function returning shortfall (no revert on adequate) | `src/MarginManager.sol` |
-| 4.2 | `MarginManager.evaluateAll()` — iterate all active obligations, create margin calls for any with shortfall | `src/MarginManager.sol` |
-| 4.3 | Store bounded margin call history per obligation (ring buffer of last 16) | `src/MarginManager.sol` |
-| 4.4 | Add `previewMarginCall(obligationId)` view to MarginManager | `src/MarginManager.sol` |
-| 4.5 | Tests: margin call created on price drop, history stored, preview works | `test/unit/MarginManager.t.sol` |
+| 4.1 | `MarginEvaluation` struct view `evaluateMargin(obligationId)` — returns `(shortfall, currentValue, requiredValue, isAdequate)`; does **not** revert when adequate (needed by `check`) | `src/MarginManager.sol` |
+| 4.2 | `previewMarginCall(obligationId)` — non-mutating preview of what a call would raise | `src/MarginManager.sol` |
+| 4.3 | `evaluateAll(obligationIds[])` — iterate obligations, create a margin call for any with shortfall (caller = operator/agent controls gas) | `src/MarginManager.sol` |
+| 4.4 | Bounded margin-call history per obligation (ring buffer of last 16) with `getMarginCallHistory` / paginated view; written by create/satisfy/cancel | `src/MarginManager.sol` |
+| 4.5 | CLI `margin-monitor` project (TypeScript + viem + commander): `deploy`, `price update`, `check`, `watch`, `status`, `history` | `cli/` |
+| 4.6 | CLI `price update` signs as VALUATION_PROVIDER; `check`/`watch` invoke `evaluateAll`/`evaluateMargin` as COLLATERAL_AGENT; read deployment from `deployments/anvil.json` | `cli/src/` |
+| 4.7 | `watch` mode — polling loop that refreshes prices and evaluates, standing in for Chainlink Automation / a continuously-running margin desk | `cli/src/` |
+| 4.8 | CLI command + key semantics documented (Option A: `price update` then separate `check`), two roles, `.env` keys | `specs/phase4-cli.md` |
+| 4.9 | Tests: evaluateMargin, evaluateAll, preview, ring-buffer history, price-update + call workflow | `test/unit/MarginManager.t.sol`, `test/integration/MarginAutomation.t.sol` |
+| 4.10 | Demo update: use `evaluateMargin`/`evaluateAll`/history; show price drop → operator raises call → system asks for more collateral | `script/Demo.s.sol` |
 
-**Exit:** `forge test` passes. Demo script shows automated margin call.
+**Exit:** `forge test` passes. `margin-monitor` CLI on Anvil updates a price and
+raises a margin call end-to-end, and `watch` demonstrates automated monitoring.
+The operator side is structured so a Chainlink keeper can replace it in a later
+phase.
 
 ---
 
@@ -170,6 +214,11 @@ randomized inputs.
 ## Phase 11 — Chainlink Keepers
 
 **Goal:** Automated margin monitoring and time-triggered operations.
+
+This is the production replacement for the CLI `watch` operator built in
+Phase 4. The on-chain `evaluateAll`/`evaluateMargin` surface stays the same;
+the keeper simply becomes the invocation actor (Chainlink Automation) feeding
+it, so the two-actor model (data provider + operator) holds throughout.
 
 | Step | Task | Files |
 |------|------|-------|

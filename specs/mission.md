@@ -41,6 +41,15 @@ stands on its own.
    roles (BANK, CSD, CUSTODIAN, COLLATERAL_AGENT, VALUATION_PROVIDER, etc.)
    to participant addresses. Every mutation is gated by role checks.
 
+7. **Two-actor automation.** Market-data provision and margin enforcement are
+   kept as distinct actors. A *data provider* (the VALUATION_PROVIDER, standing
+   in for a Chainlink price feed or a tri-party agent delivering collateral
+   valuations) signs fresh prices into the oracle. A separate *operator* (the
+   COLLATERAL_AGENT, standing in for a margin-desk UI or a Chainlink keeper)
+   periodically invokes margin evaluation and, on shortfall, raises the margin
+   call that asks for more collateral. In Phase 4 this automation is driven by
+   a CLI; a later phase swaps the operator for an on-chain Chainlink keeper.
+
 ## Scope
 
 ### In scope
@@ -49,6 +58,9 @@ stands on its own.
 - Collateral substitution with atomicity guarantees
 - Repo creation, settlement (DvP), repayment, default
 - Margin requirement tracking and margin call lifecycle
+- CLI/UI-driven margin automation: signed price updates and edge-triggered
+  margin checks that raise margin calls when collateral falls short
+  (commands and keys in `specs/phase4-cli.md`)
 - Signed custody and compliance attestations
 - Eligibility policy engine with configurable haircuts
 - Signed price oracle with staleness protection
@@ -60,7 +72,12 @@ stands on its own.
 - Cross-chain collateral tracking (future phase)
 - DAO governance (future phase)
 - Securities lending without cash leg (future phase)
-- Tri-party collateral management (future phase)
+- Live tri-party collateral management integration (future phase; the
+  tri-party pattern is simulated here by the CLI acting as the tri-party
+  agent's operator and data source)
+- Production Chainlink price feeds (future phase; the CLI `price update`
+  command stands in for a Chainlink feed, so the two-actor automation it
+  exercises is feed-compatible)
 
 ## Success criteria
 
@@ -69,7 +86,9 @@ stands on its own.
 2. Repo transactions settle atomically (DvP) with collateral locked and
    cash delivered in one transaction.
 3. Margin calls are triggered when collateral value falls below requirements,
-   with substitution available to cure shortfalls.
+   with substitution available to cure shortfalls. An operator (CLI, later a
+   keeper or margin-desk UI) can update a price, run a margin check, and raise
+   the call that asks the borrower for more collateral — end to end.
 4. All state transitions are authorized — no participant can mutate collateral
    without the correct role.
 5. The system runs locally on Anvil for development and can deploy to Base
