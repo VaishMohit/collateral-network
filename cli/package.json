@@ -1,0 +1,25 @@
+{
+  "name": "margin-monitor",
+  "version": "1.0.0",
+  "description": "CLI for two-actor margin automation on the Collateral Network (Anvil)",
+  "type": "module",
+  "bin": {
+    "margin-monitor": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "dotenv": "^16.4.5",
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.0"
+  }
+}
