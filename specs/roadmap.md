@@ -117,7 +117,47 @@ phase.
 
 ---
 
-## Phase 5 — Repo enhancements
+## Phase 5 — Besu permissioned consortium deployment
+
+**Goal:** Stand up the collateral protocol on a permissioned Besu consortium
+network where participating banks run their own validator nodes, establishing
+the network's private/consortium deployment surface alongside the public-L2
+surface covered in Phase 11.
+
+**Context — how Besu relates to the L2 deployment (Phase 11).** Phase 11
+deploys to public L2s (Base/Arbitrum Sepolia → mainnet) where a blockchain is
+shared infrastructure. Besu is the opposite deployment surface: a
+**permissioned, bank-operated consortium** chain (QBFT consensus) where
+validators are the participating institutions and access is controlled via
+on-chain account allowlisting. The protocol's role model
+(`ProtocolAccessManager`) maps directly onto a consortium: each bank node runs
+its own validator, and the existing roles (BANK, CSD, CUSTODIAN,
+COLLATERAL_AGENT) become the network's participants. Besu is not a replacement
+for the public L2 — the two surfaces serve different institutional needs
+(shared public rails vs. a private bank-owned consortium), and the same
+contracts deploy to both.
+
+**Consensus & access.** QBFT (Quorum Byzantine Fault Tolerant) PoA consensus,
+one validator per participating bank, with `--permissions-accounts-contract-enabled`
+JSON-RPC allowlisting to gate which addresses/accounts may submit transactions.
+
+| Step | Task | Files |
+|------|------|-------|
+| 5.1 | Compose a Besu devnet: QBFT genesis, multiple bank validator nodes, permissioned (account-allowlisted) RPC | `infra/besu/docker-compose.yml`, `infra/besu/genesis.json`, `infra/besu/config.toml` |
+| 5.2 | On-chain account allowlisting contract and bootstrapping script | `script/besu/Allowlist.s.sol` |
+| 5.3 | Besu deployment script — reuse the same constructor wiring as `Deploy.s.sol` against QBFT chain | `script/besu/DeployBesu.s.sol` |
+| 5.4 | Role mapping: assign one validator per participating bank; wire roles from the Anvil devnet to distinct Besu bank EOA/validator addresses | `script/besu/DeployBesu.s.sol` |
+| 5.5 | Wire `ProtocolAccessManager` and the RBAC checks to the allowlist contract (network-level + role-level gating) | `src/ProtocolAccessManager.sol`, `script/besu/` |
+| 5.6 | End-to-end demo on Besu devnet (pledge → repo → margin → substitute) mirroring `Demo.s.sol` | `script/besu/DemoBesu.s.sol` |
+| 5.7 | Document Node/Bootnode/validator setup, genesis, permissions config, and operational RPC surface | `infra/besu/README.md` |
+
+**Exit:** `forge test` passes. A multi-validator Besu devnet is up via
+`docker compose`, the network is deployed and permissioned, and the demo runs
+end-to-end on the QBFT consortium chain.
+
+---
+
+## Phase 6 — Repo enhancements
 
 **Goal:** Repos support early repayment, grace periods, and rollover.
 
@@ -133,7 +173,7 @@ phase.
 
 ---
 
-## Phase 6 — Settlement improvements
+## Phase 7 — Settlement improvements
 
 **Goal:** Partial settlement, netting, and settlement records.
 
@@ -148,7 +188,7 @@ phase.
 
 ---
 
-## Phase 7 — Expanded asset universe
+## Phase 8 — Expanded asset universe
 
 **Goal:** Dynamic asset onboarding and multiple asset types.
 
@@ -164,7 +204,7 @@ phase.
 
 ---
 
-## Phase 8 — Multi-currency support
+## Phase 9 — Multi-currency support
 
 **Goal:** Collateral and settlement support multiple currencies.
 
@@ -180,7 +220,7 @@ phase.
 
 ---
 
-## Phase 9 — Chainlink price feeds
+## Phase 10 — Chainlink price feeds
 
 **Goal:** Replace custom oracle with Chainlink Data Feeds (or support both).
 
@@ -195,7 +235,7 @@ phase.
 
 ---
 
-## Phase 10 — L2 testnet deployment
+## Phase 11 — L2 testnet deployment
 
 **Goal:** Deploy and verify on Base Sepolia and Arbitrum Sepolia.
 
@@ -211,7 +251,7 @@ phase.
 
 ---
 
-## Phase 11 — Chainlink Keepers
+## Phase 12 — Chainlink Keepers
 
 **Goal:** Automated margin monitoring and time-triggered operations.
 
@@ -231,7 +271,7 @@ it, so the two-actor model (data provider + operator) holds throughout.
 
 ---
 
-## Phase 12 — The Graph subgraph
+## Phase 13 — The Graph subgraph
 
 **Goal:** Index all on-chain events for frontend consumption.
 
@@ -246,7 +286,7 @@ it, so the two-actor model (data provider + operator) holds throughout.
 
 ---
 
-## Phase 13 — OpenZeppelin Defender
+## Phase 14 — OpenZeppelin Defender
 
 **Goal:** Upgradeability, pause, and operational security.
 
@@ -262,7 +302,7 @@ it, so the two-actor model (data provider + operator) holds throughout.
 
 ---
 
-## Phase 14 — TypeScript SDK
+## Phase 15 — TypeScript SDK
 
 **Goal:** Client library for frontends and backends.
 
@@ -279,7 +319,7 @@ it, so the two-actor model (data provider + operator) holds throughout.
 
 ---
 
-## Phase 15 — Security audit preparation
+## Phase 16 — Security audit preparation
 
 **Goal:** Ready for external security audit.
 
@@ -296,7 +336,7 @@ it, so the two-actor model (data provider + operator) holds throughout.
 
 ---
 
-## Phase 16 — Production mainnet
+## Phase 17 — Production mainnet
 
 **Goal:** Deploy to Base or Arbitrum mainnet.
 

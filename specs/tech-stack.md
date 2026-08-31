@@ -116,6 +116,37 @@ every workflow function, and handles transaction signing.
 
 **Status:** Not yet implemented. No `sdk/` directory exists yet.
 
+### Permissioned consortium — Hyperledger Besu
+
+**What:** Deploy the protocol to a private, bank-operated Besu consortium
+rather than (or in addition to) public L2s.
+
+**Why:** Institutions may prefer a permissioned network where participating
+banks control the validators and network access. Besu provides enterprise
+ingress: account allowlisting, permissioned PoA consensus (QBFT), and
+EVM-compatibility with no contract changes — the same Solidity deploys to
+Anvil, Besu, and the public L2s.
+
+**Consensus & permissions:**
+- Consensus: QBFT (Quorum Byzantine Fault Tolerant), one validator per
+  participating bank.
+- Network permissioning: `--permissions-accounts-contract-enabled` with an
+  on-chain account allowlist contract gating transaction submission.
+- RPC surface: JSON-RPC allowlisting to restrict which accounts/APIs are
+  exposed, plus business-object event listeners (`--rpc-http-api`)
+  integrated with the existing `cli/` and `offchain/` services.
+
+**Role mapping:** Each bank node/validator holds its `ProtocolAccessManager`
+role (BANK, CSD, CUSTODIAN, COLLATERAL_AGENT, VALUATION_PROVIDER). Network
+access (allowlist) and protocol roles are two separable layers: the
+allowlist gates *who may transact at all*; `ProtocolAccessManager` gates
+*what a given role may do*.
+
+**Deployment:** `infra/besu/` (docker compose multi-validator devnet,
+genesis, config) and `script/besu/` (deploy + demo). See Phase 5.
+
+**Status:** Not yet implemented. Anvil is the only active deployment surface.
+
 ## Trust Model
 
 The Collateral Network uses its own `ProtocolAccessManager` for role-based
@@ -140,7 +171,8 @@ external identity framework.
 | Environment | Chain | Purpose |
 |-------------|-------|---------|
 | Local | Anvil (port 8545) | Development, testing, demo |
-| Testnet | Base Sepolia | L2 testnet validation |
-| Testnet | Arbitrum Sepolia | L2 testnet validation |
-| Mainnet | Base | Production (future) |
-| Mainnet | Arbitrum | Production (future) |
+| Consortium | Hyperledger Besu (QBFT, bank validators) | Permissioned institutional network |
+| Testnet | Base Sepolia | Public L2 testnet validation |
+| Testnet | Arbitrum Sepolia | Public L2 testnet validation |
+| Mainnet | Base | Public production (future) |
+| Mainnet | Arbitrum | Public production (future) |

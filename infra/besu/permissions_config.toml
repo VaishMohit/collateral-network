@@ -1,0 +1,12 @@
+# Account-level permissioning allowlist.
+# Only the listed accounts may submit transactions on the QBFT network.
+# Includes the three bank validators plus operator/admin addresses used by
+# the deployment and demo scripts.
+accounts-allowlist = [
+  "0x9bba576dffae241181e3826d11ee2d084fd6b045",
+  "0x1a60a16f94f1c37f8d63289e8b16b684d50a36a8",
+  "0x3c3353ecc3c58df65097050005418357db35a86d",
+  "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+  "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+  "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc"
+]

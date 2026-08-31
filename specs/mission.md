@@ -50,6 +50,17 @@ stands on its own.
    call that asks for more collateral. In Phase 4 this automation is driven by
    a CLI; a later phase swaps the operator for an on-chain Chainlink keeper.
 
+8. **Deployment-surface agnostic.** The protocol is fleetable across two
+   distinct deployment surfaces with the same contracts and role model:
+   public L2s (Base/Arbitrum) as shared infrastructure, and a private
+   bank-operated Besu consortium (QBFT) where participants run their own
+   validators. Deploying to one surface never requires forking the protocol —
+   the differences live entirely in infrastructure (consensus, permissions,
+   RPC), not in contract logic. On Besu, the existing role model
+   (`ProtocolAccessManager`) maps directly onto the consortium: each bank
+   running a validator holds its protocol role, and network-level access is
+   gated by Besu account allowlisting on top of the on-chain RBAC.
+
 ## Scope
 
 ### In scope
@@ -66,6 +77,8 @@ stands on its own.
 - Signed price oracle with staleness protection
 - Comprehensive audit trail for all state transitions
 - Mock CSD (depository stays mocked; collateral management is on-chain)
+- Deployment to a permissioned Besu consortium (QBFT, bank-operated
+  validators, account allowlisting) alongside the public-L2 target
 
 ### Out of scope (for now)
 
@@ -91,5 +104,6 @@ stands on its own.
    the call that asks the borrower for more collateral — end to end.
 4. All state transitions are authorized — no participant can mutate collateral
    without the correct role.
-5. The system runs locally on Anvil for development and can deploy to Base
-   or Arbitrum testnets.
+5. The system runs locally on Anvil for development, deploys to a permissioned
+   Besu consortium (bank-operated QBFT validators, allowlisted RPC), and can
+   deploy to Base or Arbitrum testnets.

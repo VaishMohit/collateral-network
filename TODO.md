@@ -4,7 +4,7 @@ Feature roadmap toward a production-grade collateral management system
 modeled on DTCC Appchain capabilities. The depository (CSD) remains mocked;
 collateral management, settlement, and repo logic are on-chain.
 
-**Target chains:** Anvil (local) → Base / Arbitrum (L2 testnet → mainnet)
+**Target chains:** Anvil (local) → Besu consortium (permissioned) → Base / Arbitrum (L2 testnet → mainnet)
 
 ---
 
@@ -397,4 +397,4 @@ Features that DTCC Appchain provides and the current V1 lacks entirely.
 | CashToken | Mock ⚠️ | Test-only. Replace with real stablecoin or multi-currency. |
 | ProtocolAccessManager | V1 ✅ | Needs time-limited roles, emergency pause. |
 | Test suite | V1 ⚠️ | Good unit coverage. Missing invariant/fuzz tests. |
-| Deployment | Local ✅ | Needs L2 testnet deployment (Base/Arbitrum). |
+| Deployment | Local ✅ | Local Anvil. Needs Besu consortium + L2 testnet deployment. |

@@ -1,0 +1,109 @@
+version: "3.8"
+
+# Hyperledger Besu permissioned QBFT devnet (Besu v26).
+# Three validator nodes, one per "participating bank". QBFT PoA consensus.
+#
+# Topology: guaranteed FULL MESH. Each validator uses a static-nodes file
+# listing the other two validators, so every pair is directly connected
+# (validator1<->2, 2<->3, 1<->3) regardless of discovery timing. Static peers
+# are maintained for the life of the node, which is the configuration QBDT
+# wants: every validator broadcasts PREPARE/COMMIT votes directly to every
+# other validator.
+#
+# RPC ports are exposed on distinct host ports so `cast`/`forge` can reach
+# each node like an Anvil node.
+#
+# (Account permissioning / allowlisting is layered on in a later hardening
+# step; first bring the QBFT chain up and confirm it mines.)
+
+services:
+  validator1:
+    image: hyperledger/besu:latest
+    container_name: besu-validator1
+    command: >
+      --data-path=/data
+      --genesis-file=/config/genesis.json
+      --network-id=1337
+      --node-private-key-file=/config/key
+      --p2p-port=30303
+      --static-nodes-file=/config/static-nodes.json
+      --rpc-http-enabled
+      --rpc-http-api=ETH,NET,WEB3,QBFT,PERM,ADMIN
+      --rpc-http-cors-origins=*
+      --host-allowlist=*
+      --logging=INFO
+    volumes:
+      - ./genesis.json:/config/genesis.json:ro
+      - ./keys/validator1.key:/config/key:ro
+      - ./static-nodes/validator1.json:/config/static-nodes.json:ro
+      - ./data/node1:/data
+    ports:
+      - "8545:8545"    # RPC
+      - "8546:8546"    # WS
+      - "30303:30303"  # P2P
+    networks:
+      besu-net:
+        ipv4_address: 172.28.0.11
+
+  validator2:
+    image: hyperledger/besu:latest
+    container_name: besu-validator2
+    depends_on:
+      - validator1
+    command: >
+      --data-path=/data
+      --genesis-file=/config/genesis.json
+      --network-id=1337
+      --node-private-key-file=/config/key
+      --p2p-port=30303
+      --static-nodes-file=/config/static-nodes.json
+      --rpc-http-enabled
+      --rpc-http-api=ETH,NET,WEB3,QBFT,PERM,ADMIN
+      --rpc-http-cors-origins=*
+      --host-allowlist=*
+      --logging=INFO
+    volumes:
+      - ./genesis.json:/config/genesis.json:ro
+      - ./keys/validator2.key:/config/key:ro
+      - ./static-nodes/validator2.json:/config/static-nodes.json:ro
+      - ./data/node2:/data
+    ports:
+      - "8550:8545"    # RPC
+    networks:
+      besu-net:
+        ipv4_address: 172.28.0.12
+
+  validator3:
+    image: hyperledger/besu:latest
+    container_name: besu-validator3
+    depends_on:
+      - validator1
+    command: >
+      --data-path=/data
+      --genesis-file=/config/genesis.json
+      --network-id=1337
+      --node-private-key-file=/config/key
+      --p2p-port=30303
+      --static-nodes-file=/config/static-nodes.json
+      --rpc-http-enabled
+      --rpc-http-api=ETH,NET,WEB3,QBFT,PERM,ADMIN
+      --rpc-http-cors-origins=*
+      --host-allowlist=*
+      --logging=INFO
+    volumes:
+      - ./genesis.json:/config/genesis.json:ro
+      - ./keys/validator3.key:/config/key:ro
+      - ./static-nodes/validator3.json:/config/static-nodes.json:ro
+      - ./data/node3:/data
+    ports:
+      - "8551:8545"    # RPC
+    networks:
+      besu-net:
+        ipv4_address: 172.28.0.13
+
+networks:
+  besu-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
